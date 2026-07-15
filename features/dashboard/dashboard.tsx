@@ -12,7 +12,14 @@ import { StatsGrid } from "@/features/dashboard/components/stats-grid";
 import { mockReviews } from "@/features/dashboard/data/mock-reviews";
 import type { Review, ResponseTone } from "@/features/dashboard/types";
 
-export function Dashboard() {
+type DashboardProps = {
+  organizationName: string;
+  userFullName: string;
+  userFirstName: string;
+  role: "owner" | "admin" | "member";
+};
+
+export function Dashboard({ organizationName, userFullName, userFirstName, role }: DashboardProps) {
   const [selected, setSelected] = useState<Review>(mockReviews[1]);
   const [tone, setTone] = useState<ResponseTone>("Chaleureux");
   const [published, setPublished] = useState(false);
@@ -24,10 +31,10 @@ export function Dashboard() {
 
   return (
     <main className="min-h-screen bg-background lg:flex">
-      <DashboardSidebar />
+      <DashboardSidebar organizationName={organizationName} userFullName={userFullName} role={role} />
 
       <section className="min-w-0 flex-1 p-4 pt-20 lg:p-8">
-        <DashboardHeader userFirstName="Thomas" />
+        <DashboardHeader userFirstName={userFirstName} />
         <StatsGrid />
 
         <div className="mt-5 grid gap-5 xl:grid-cols-[1.8fr_1fr]">

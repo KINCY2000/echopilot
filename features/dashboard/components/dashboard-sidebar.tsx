@@ -5,12 +5,18 @@ import { Menu } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarNav } from "@/features/dashboard/components/sidebar-nav";
 
-export function DashboardSidebar() {
+type SidebarProps = {
+  organizationName: string;
+  userFullName: string;
+  role: "owner" | "admin" | "member";
+};
+
+export function DashboardSidebar({ organizationName, userFullName, role }: SidebarProps) {
   return (
     <>
       {/* Desktop: persistent sidebar */}
       <aside className="hidden w-64 shrink-0 bg-gradient-to-b from-[#092757] to-[#04162f] lg:block">
-        <SidebarNav />
+        <SidebarNav organizationName={organizationName} userFullName={userFullName} role={role} />
       </aside>
 
       {/* Mobile: slide-over sheet triggered by a floating button */}
@@ -23,7 +29,7 @@ export function DashboardSidebar() {
         <SheetContent side="left" className="w-64 bg-gradient-to-b from-[#092757] to-[#04162f] p-0">
           <SheetTitle>Menu de navigation</SheetTitle>
           <SheetDescription>Accès rapide aux sections d&apos;EchoPilot</SheetDescription>
-          <SidebarNav />
+          <SidebarNav organizationName={organizationName} userFullName={userFullName} role={role} />
         </SheetContent>
       </Sheet>
     </>

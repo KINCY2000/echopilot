@@ -5,11 +5,15 @@ import {
   CircleDollarSign,
   Home,
   Lightbulb,
+  LogOut,
   type LucideIcon,
   MessageSquareText,
   Settings,
   Sparkles,
 } from "lucide-react";
+
+import { signOut } from "@/features/auth/actions";
+import { getInitials } from "@/lib/format";
 
 type MenuItem = {
   icon: LucideIcon;
@@ -30,10 +34,24 @@ const MENU_ITEMS: MenuItem[] = [
 
 /**
  * Navigation content shared between the desktop sidebar and the mobile
- * sheet. Purely presentational — routing wired up in Module 3 (Auth) once
- * real pages exist for each section.
+ * sheet. Section links are still static (routing wired up as each section
+ * gets a real page, from Module 7 onward).
  */
-export function SidebarNav() {
+const ROLE_LABELS = {
+  owner: "Propriétaire",
+  admin: "Administrateur",
+  member: "Membre",
+} as const;
+
+export function SidebarNav({
+  organizationName,
+  userFullName,
+  role,
+}: {
+  organizationName: string;
+  userFullName: string;
+  role: "owner" | "admin" | "member";
+}) {
   return (
     <div className="flex h-full flex-col p-5 text-white">
       <div className="mb-8 flex items-center gap-3 text-2xl font-bold">
@@ -63,22 +81,33 @@ export function SidebarNav() {
       <div className="mt-auto space-y-4">
         <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
           <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-full bg-indigo-500 font-bold">R</div>
-            <div>
-              <div className="text-sm font-semibold">Le Bistrot Parisien</div>
+            <div className="grid size-10 place-items-center rounded-full bg-indigo-500 font-bold">
+              {getInitials(organizationName)[0]}
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{organizationName}</div>
               <div className="text-xs text-slate-300">1 établissement</div>
             </div>
-            <ChevronDown size={16} className="ml-auto" />
+            <ChevronDown size={16} className="ml-auto shrink-0" />
           </div>
         </div>
         <div className="flex items-center gap-3 border-t border-white/10 pt-4">
-          <div className="grid size-10 place-items-center rounded-full bg-amber-100 font-bold text-amber-800">
-            TM
+          <div className="grid size-10 shrink-0 place-items-center rounded-full bg-amber-100 font-bold text-amber-800">
+            {getInitials(userFullName)}
           </div>
-          <div>
-            <div className="text-sm font-semibold">Thomas Martin</div>
-            <div className="text-xs text-slate-300">Propriétaire</div>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{userFullName}</div>
+            <div className="text-xs text-slate-300">{ROLE_LABELS[role]}</div>
           </div>
+          <form action={signOut}>
+            <button
+              type="submit"
+              aria-label="Se déconnecter"
+              className="rounded-lg p-2 text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
+              <LogOut size={16} />
+            </button>
+          </form>
         </div>
       </div>
     </div>

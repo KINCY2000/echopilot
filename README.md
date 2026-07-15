@@ -71,10 +71,25 @@ Les migrations SQL vivent dans `supabase/migrations/`, appliquées dans l'ordre 
 
 **Validation** : en l'absence d'accès Docker dans cet environnement (`supabase start` / `supabase gen types --db-url` en ont besoin), les migrations ont été vérifiées par une exécution réelle sur un PostgreSQL 16 local : application de toutes les migrations sans erreur, puis un scénario à 3 utilisateurs/2 organisations confirmant l'isolation multi-tenant (un utilisateur ne voit jamais les données d'une autre organisation), les restrictions par rôle (un simple membre ne peut pas connecter un compte Google), et les contraintes (une seule réponse publiée par avis). `types/database.types.ts` a été écrit à la main à partir de ce schéma validé (introspection `information_schema`) ; à régénérer via `npx supabase gen types typescript --project-id <ref>` dès qu'un vrai projet Supabase existe.
 
-## Ce qui fonctionne déjà (prototype visuel)
+## Authentification (Supabase Auth)
 
-- Tableau de bord responsive (sidebar desktop + menu mobile en Sheet)
-- Indicateurs de réputation, graphiques de tendance et de répartition
+- **Inscription** (`/signup`) → e-mail de confirmation → **callback** (`/auth/callback`) échange le code contre une session → **onboarding** (`/onboarding`) crée l'organisation (RPC `create_organization`) → **tableau de bord** (`/dashboard`).
+- **Connexion** (`/login`), avec redirection post-connexion vers la page initialement demandée (paramètre `next`, validé pour n'accepter que des chemins relatifs — pas de redirection ouverte).
+- **Déconnexion** via un `<form action={signOut}>` dans la barre latérale (Server Action).
+- **Protection des routes** : `proxy.ts` (ex-`middleware.ts`, renommé selon la convention Next.js 16) rafraîchit la session sur chaque requête et redirige les visiteurs non connectés vers `/login`. La vérification d'appartenance à une organisation (redirection vers `/onboarding` si absente) se fait plus bas, dans `app/dashboard/page.tsx`, car elle nécessite une requête DB que le middleware (Edge) évite volontairement.
+- **CSRF** : géré nativement par les Server Actions de Next.js (vérification de l'origine de la requête) — aucun code additionnel requis.
+- **Validation** : Zod côté serveur (`features/auth/schemas.ts`, `features/onboarding/schemas.ts`) en plus de la validation native des formulaires HTML.
+- **Anti-énumération de comptes** : les erreurs d'inscription et de connexion renvoient des messages génériques, sans jamais confirmer si un e-mail est déjà enregistré.
+- **Journalisation** : la création d'une organisation est tracée dans `audit_logs` (`organization.created`), visible uniquement par les owners/admins.
+- Non couvert par ce module (hors scope) : réinitialisation de mot de passe, connexion via Google OAuth (distinct de l'OAuth Google Business Profile du Module 4), limitation de débit applicative sur les tentatives de connexion.
+
+**Limite de test dans cet environnement** : sans projet Supabase réel connecté, le flow complet (envoi d'e-mail, création de session) n'a pas pu être testé de bout en bout ici. Ce qui a été vérifié concrètement dans un navigateur : le rendu des pages, la validation des formulaires (native + Zod), la protection des routes par le middleware (`/dashboard` → redirige vers `/login?next=/dashboard` sans session), et l'affichage des erreurs renvoyées par les Server Actions — y compris avec des identifiants Supabase invalides (le client gère l'échec réseau proprement, sans crasher l'app). `npm run build` réussit sans variables d'environnement configurées (`export const dynamic = "force-dynamic"` sur les pages qui lisent la session, pour ne pas dépendre de secrets au moment du build/CI).
+
+## Ce qui fonctionne déjà
+
+- Inscription, connexion, déconnexion, onboarding (création d'organisation) — code complet, à tester avec un vrai projet Supabase
+- Tableau de bord protégé, affichant le vrai nom d'utilisateur et de l'organisation connectés
+- Indicateurs de réputation, graphiques de tendance et de répartition (encore simulés)
 - Sélection d'un avis, analyse IA simulée, choix du ton, réponse générée simulée
 - Bouton de publication simulé
 
@@ -84,7 +99,7 @@ Les migrations SQL vivent dans `supabase/migrations/`, appliquées dans l'ordre 
 |---|---|
 | 1. Fondations techniques (shadcn/ui, structure, clients Supabase) | ✅ |
 | 2. Modèle de données (schéma, migrations, RLS) | ✅ |
-| 3. Authentification (Supabase Auth, multi-tenant) | à venir |
+| 3. Authentification (Supabase Auth, multi-tenant) | ✅ |
 | 4. Intégration Google Business Profile (OAuth, sync) | à venir |
 | 5. Moteur IA d'analyse (sentiment, thèmes, urgence) | à venir |
 | 6. Génération de réponse IA + publication | à venir |
