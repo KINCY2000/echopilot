@@ -51,6 +51,26 @@ Principe : chaque fonctionnalité (`features/*`) est autonome et ne dépend que 
 
 Voir `.env.example` pour la liste complète et leur module d'origine. Aucune clé API n'est utilisée côté client, sauf les variables `NEXT_PUBLIC_*` (URL et clé anonyme Supabase), qui sont conçues pour être publiques.
 
+## Modèle de données (Supabase)
+
+Les migrations SQL vivent dans `supabase/migrations/`, appliquées dans l'ordre de leur préfixe horodaté :
+
+| Fichier | Contenu |
+|---|---|
+| `..._helper_functions.sql` | Trigger générique `set_updated_at` |
+| `..._organizations_and_members.sql` | `organizations`, `profiles`, `organization_members`, RPC `create_organization`, helpers RLS (`private.*`) |
+| `..._google_and_businesses.sql` | `google_connections` (tokens chiffrés côté app avant stockage), `businesses` |
+| `..._reviews_and_ai_responses.sql` | `reviews` (+ champs d'analyse IA), `ai_responses` (une seule réponse publiée par avis, contrainte d'index) |
+| `..._billing_notifications_audit.sql` | `subscriptions`, `notifications`, `ai_recommendations`, `audit_logs` |
+| `..._rls_policies.sql` | RLS activée sur toutes les tables, scoping multi-tenant par organisation |
+| `..._grants.sql` | `GRANT` explicites au rôle `authenticated` (nécessaires en plus des policies RLS — voir note ci-dessous) |
+
+**Principe multi-tenant** : chaque ligne appartient (directement ou via une table parente) à une `organization`. Les policies RLS utilisent des fonctions `SECURITY DEFINER` dans le schéma `private` (`is_organization_member`, `is_organization_admin`) pour éviter la récursion RLS sur `organization_members` elle-même. Les tables alimentées uniquement côté serveur (sync Google, webhooks Stripe, logs d'audit) n'ont aucune policy INSERT/UPDATE/DELETE pour `authenticated` : elles ne sont modifiables que via `lib/supabase/admin.ts` (service role, contourne RLS).
+
+⚠️ **Grants explicites requis** : les projets Supabase récents n'exposent plus automatiquement les nouvelles tables aux rôles `anon`/`authenticated` (voir le commentaire `auto_expose_new_tables` dans `supabase/config.toml`). Les policies RLS seules ne suffisent donc pas — `..._grants.sql` accorde explicitement les privilèges nécessaires.
+
+**Validation** : en l'absence d'accès Docker dans cet environnement (`supabase start` / `supabase gen types --db-url` en ont besoin), les migrations ont été vérifiées par une exécution réelle sur un PostgreSQL 16 local : application de toutes les migrations sans erreur, puis un scénario à 3 utilisateurs/2 organisations confirmant l'isolation multi-tenant (un utilisateur ne voit jamais les données d'une autre organisation), les restrictions par rôle (un simple membre ne peut pas connecter un compte Google), et les contraintes (une seule réponse publiée par avis). `types/database.types.ts` a été écrit à la main à partir de ce schéma validé (introspection `information_schema`) ; à régénérer via `npx supabase gen types typescript --project-id <ref>` dès qu'un vrai projet Supabase existe.
+
 ## Ce qui fonctionne déjà (prototype visuel)
 
 - Tableau de bord responsive (sidebar desktop + menu mobile en Sheet)
@@ -63,7 +83,7 @@ Voir `.env.example` pour la liste complète et leur module d'origine. Aucune cl�
 | Module | Statut |
 |---|---|
 | 1. Fondations techniques (shadcn/ui, structure, clients Supabase) | ✅ |
-| 2. Modèle de données (schéma, migrations, RLS) | à venir |
+| 2. Modèle de données (schéma, migrations, RLS) | ✅ |
 | 3. Authentification (Supabase Auth, multi-tenant) | à venir |
 | 4. Intégration Google Business Profile (OAuth, sync) | à venir |
 | 5. Moteur IA d'analyse (sentiment, thèmes, urgence) | à venir |
